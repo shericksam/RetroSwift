@@ -20,7 +20,7 @@ Install the dependencies and devDependencies and start the server.
 
 ```Swift
 dependencies: [
-    .package(url: "https://github.com/shericksam/RetroSwift.git", from: "1.1.3")
+    .package(url: "https://github.com/shericksam/RetroSwift.git", from: "1.1.4")
 ]
 ```
 ### Start with RetroSwift
@@ -75,6 +75,7 @@ func fetchUser(byUserId userId: Int) -> Result<UserResponse, ErrorModel> {
 
 Example:
 ```Swift
+// ApiTest.swift
 func fetchUsers() -> Result<UsersResponse, ErrorModel> {
     let request = RequestModel(
             httpMethod: .get,
@@ -156,6 +157,38 @@ func onFailRequestAuth(_ urlOld: URLRequest) -> URLRequest? {
 ```
 The request is called again with the new token to return the requested data. 
 
+### Usage 
+Create a repository
+```Swift
+class UsersRepository {
+    static var shared = UsersRepository()
+    let api = ApiTest.shared
+    
+    func fetchUser(byUserId userId: Int) throws -> UserResponse {
+        return try self.api.fetchUser(userId).get()
+    }
+}
+```
+
+in your view model
+```Swift 
+import RetroSwift 
+
+let usersRepository: UsersRepository = .shared
+    
+func fetchUser(byUserId userId: Int) {
+        Coroutines.io {
+            do {
+                let result = try self.usersRepository.fetchUser(byUserId: userId)
+                Coroutines.main {
+                    self.user = result.user 
+                }
+            } catch {
+                print("Api error", error.localizedDescription)
+            }
+        }
+    }
+```
 ### License
 RetroSwift is released under the MIT license.
 
