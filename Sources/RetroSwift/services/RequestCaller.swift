@@ -8,7 +8,7 @@
 import Foundation
 import CoreData
 
-public typealias DecodableError = Decodable & HasErrorInfo
+public typealias DecodableError = Decodable & HasErrorInfo & Error
 
 protocol RequestCallerTokenRefresh {
     func onNewToken(token: String)
@@ -387,16 +387,6 @@ public class RequestCaller {
 enum NetworkResponseResult<Error> {
     case success
     case failure(Error)
-}
-
-
-public protocol HasErrorInfo {
-    
-    var status: Int? { get set }
-    var errorCode:Int? { get set }
-    var errorDetail:String? { get set }
-    
-    init()
 }
 
 enum ApiError: Error {
