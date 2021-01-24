@@ -14,16 +14,15 @@ public struct ErrorModel: HasErrorInfo, Codable, Error {
     public var errorCode: Int?
     public var errorDetail: String?
     public var message: String?
-    public var errors: [ValidAdonis]?
     
+    init() {
+        
+    }
 }
 
 extension ErrorModel: LocalizedError {
     public var localizedDescription: String {
-        if let errors = self.errors,
-           let firts = errors.first{
-            return firts.message
-        } else if let error = self.errorDetail {
+        if let error = self.errorDetail {
             return error
         }
         return "Error in model"

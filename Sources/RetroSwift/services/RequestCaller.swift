@@ -433,11 +433,3 @@ extension ApiError: LocalizedError {
         }
     }
 }
-
-
-struct ValidAdonis: Codable {
-    var field: String
-    var message: String
-    var validation: String
-    
-}
