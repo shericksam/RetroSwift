@@ -122,37 +122,37 @@ How about refresh tokens?
 **RetroSwift** provide a callback that you can set custom requests when your request fails with http status **[401](https://developer.mozilla.org/es/docs/Web/HTTP/Status/401)**. 
 
 ```swift
-    private init() {
-        self.caller.onFailRequestByAuth = onFailRequestAuth
-    }
+private init() {
+    self.caller.onFailRequestByAuth = onFailRequestAuth
+}
     
-    func onFailRequestAuth(_ urlOld: URLRequest) -> URLRequest? {
-        // your request that failed
-        var urlOld = urlOld
-        let request =  RequestModel(
-            httpMethod: .post,
-            path: "auth-server/oauth/token",
-            query: ["oldToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"],
-            contentType: .Form
-            )
-                .asURLRequest()
-        let resultCall: Result<AuthResponse, ErrorModel> = self.caller.call(request)
-        do {
-            let result = try resultCall.get()
-            let newToken = result.accessToken
-            // save if you needed
-            UserDefaults.standard.set(newToken, forKey: "WebServiceToken")
+func onFailRequestAuth(_ urlOld: URLRequest) -> URLRequest? {
+    // your request that failed
+    var urlOld = urlOld
+    let request =  RequestModel(
+        httpMethod: .post,
+        path: "auth-server/oauth/token",
+        query: ["oldToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"],
+        contentType: .Form
+        )
+            .asURLRequest()
+    let resultCall: Result<AuthResponse, ErrorModel> = self.caller.call(request)
+    do {
+        let result = try resultCall.get()
+        let newToken = result.accessToken
+        // save if you needed
+        UserDefaults.standard.set(newToken, forKey: "WebServiceToken")
 
-            // set new token to old request
-            urlOld.setValue("Bearer \(newToken)", forHTTPHeaderField: "Authorization")
-            
-            // Return request with new token in hearders
-            return urlOld
-        } catch {
-            // If fails something, return nil for notifying it
-            return nil
-        }
+        // set new token to old request
+        urlOld.setValue("Bearer \(newToken)", forHTTPHeaderField: "Authorization")
+        
+        // Return request with new token in hearders
+        return urlOld
+    } catch {
+        // If fails something, return nil for notifying it
+        return nil
     }
+}
 ```
 The request is called again with the new token to return the requested data. 
 
