@@ -10,11 +10,11 @@ import Foundation
 //import RxRetroSwift
 
 public struct ErrorModel: HasErrorInfo, Codable, Error {
-    var status: Int?
-    var errorCode: Int?
-    var errorDetail: String?
-    var message: String?
-    var errors: [ValidAdonis]?
+    public var status: Int?
+    public var errorCode: Int?
+    public var errorDetail: String?
+    public var message: String?
+    public var errors: [ValidAdonis]?
     
 }
 
