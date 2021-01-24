@@ -20,12 +20,12 @@ Install the dependencies and devDependencies and start the server.
 
 ```Swift
 dependencies: [
-    .package(url: "https://github.com/shericksam/RetroSwift.git", from: "1.1.2")
+    .package(url: "https://github.com/shericksam/RetroSwift.git", from: "1.1.3")
 ]
 ```
 ### Start with RetroSwift
 
-For example in a request for fetching specific user information and you have a `User` model, all you have to do is make the User model conforms to [Codable](https://developer.apple.com/documentation/swift/codable) and specify it when using the [RequestCaller](Sources/Services/RequestCaller.swift).
+For example in a request for fetching specific user information and you have a `User` model, all you have to do is make the User model conforms to [Codable](https://developer.apple.com/documentation/swift/codable) and specify it when using the [RequestCaller](Sources/RetroSwift/services/RequestCaller.swift).
 
 ```json
 {
@@ -91,7 +91,7 @@ func fetchUsers() -> Result<UsersResponse, ErrorModel> {
 
 About handling ResponseError:
 
-**RetroSwift** provided a typealias **DecodableError** which is a combination of [HasErrorInfo](Sources/protocols/HasErrorInfo.swift), [Decodable](https://developer.apple.com/documentation/swift/decodable) protocol and [Error](https://developer.apple.com/documentation/swift/error) :
+**RetroSwift** provided a typealias **DecodableError** which is a combination of [HasErrorInfo](Sources/RetroSwift/protocols/HasErrorInfo.swift), [Decodable](https://developer.apple.com/documentation/swift/decodable) protocol and [Error](https://developer.apple.com/documentation/swift/error) :
 
 ```Swift
 public typealias DecodableError = Decodable & HasErrorInfo & Error
