@@ -1,6 +1,6 @@
 # RetroSwift
 <p align="center" >
-  <img src="banner.png" width=300px alt="SwiftDate" title="SwiftDate">
+  <img src="banner.png" width=400px alt="SwiftDate" title="SwiftDate">
 </p>
 
 [![Build Status](https://travis-ci.com/shericksam/RetroSwift.svg?branch=main)](https://travis-ci.com/shericksam/RetroSwift)
