@@ -9,7 +9,7 @@
 import Foundation
 //import RxRetroSwift
 
-struct ErrorModel: HasErrorInfo, Codable, Error {
+public struct ErrorModel: HasErrorInfo, Codable, Error {
     var status: Int?
     var errorCode: Int?
     var errorDetail: String?
@@ -17,6 +17,7 @@ struct ErrorModel: HasErrorInfo, Codable, Error {
     var errors: [ValidAdonis]?
     
 }
+
 extension ErrorModel: LocalizedError {
     public var localizedDescription: String {
         if let errors = self.errors,

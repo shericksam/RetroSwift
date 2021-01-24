@@ -10,7 +10,7 @@
 
 import Foundation
 
-extension Encodable {
+public extension Encodable {
     var dictionaryValue: [String: Any]? {
         do {
             let encoder = JSONEncoder()

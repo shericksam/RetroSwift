@@ -8,9 +8,9 @@
 
 import Foundation
 
-class Coroutines{
+public class Coroutines{
     
-    static func io( work : @escaping () throws -> Void )  {
+    public static func io( work : @escaping () throws -> Void )  {
         DispatchQueue.global(qos: .utility).async {
             do {
                 try work()
@@ -20,7 +20,7 @@ class Coroutines{
         }
     }
     
-    static func main( work :@escaping () throws -> Void )  {
+    public static func main( work :@escaping () throws -> Void )  {
         DispatchQueue.main.async {
             do {
                 try work()
