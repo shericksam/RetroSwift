@@ -18,7 +18,7 @@ public class RequestCaller {
     
     private lazy var decoder = JSONDecoder()
     private var urlSession:URLSession
-//    private let semaphore = DispatchSemaphore(value: 0)
+    //    private let semaphore = DispatchSemaphore(value: 0)
     private let dispatchGroup = DispatchGroup()
     //    private let dispatchAllTask = DispatchGroup()
     private let dispatchQueue = DispatchQueue(label: "RetroSwift")
@@ -32,30 +32,30 @@ public class RequestCaller {
     public init(config:URLSessionConfiguration) {
         urlSession = URLSession(configuration: config)
         
-//        if let codingUserInfoKeyManagedObjectContext = CodingUserInfoKey.managedObjectContext  {
-//            let managedObjectContext = self.managedObjectContext
-//            self.decoder.userInfo[codingUserInfoKeyManagedObjectContext] = managedObjectContext
-//        }
-//        self.decoder.dateDecodingStrategy = .custom { decoder in
-//            let container = try decoder.singleValueContainer()
-//            let stringOfDays = try container.decode(String.self)
-//            return stringOfDays.toDate()?.date ?? Date()
-//        }
+        //        if let codingUserInfoKeyManagedObjectContext = CodingUserInfoKey.managedObjectContext  {
+        //            let managedObjectContext = self.managedObjectContext
+        //            self.decoder.userInfo[codingUserInfoKeyManagedObjectContext] = managedObjectContext
+        //        }
+        //        self.decoder.dateDecodingStrategy = .custom { decoder in
+        //            let container = try decoder.singleValueContainer()
+        //            let stringOfDays = try container.decode(String.self)
+        //            return stringOfDays.toDate()?.date ?? Date()
+        //        }
     }
     
     public convenience init() {
         self.init(config: URLSessionConfiguration.default)
         
-//        if let codingUserInfoKeyManagedObjectContext = CodingUserInfoKey.managedObjectContext  {
-//            let managedObjectContext = self.managedObjectContext
-//            self.decoder.userInfo[codingUserInfoKeyManagedObjectContext] = managedObjectContext
-//        }
-//
-//        self.decoder.dateDecodingStrategy = .custom { decoder in
-//            let container = try decoder.singleValueContainer()
-//            let stringOfDays = try container.decode(String.self)
-//            return stringOfDays.toDate()?.date ?? Date()
-//        }
+        //        if let codingUserInfoKeyManagedObjectContext = CodingUserInfoKey.managedObjectContext  {
+        //            let managedObjectContext = self.managedObjectContext
+        //            self.decoder.userInfo[codingUserInfoKeyManagedObjectContext] = managedObjectContext
+        //        }
+        //
+        //        self.decoder.dateDecodingStrategy = .custom { decoder in
+        //            let container = try decoder.singleValueContainer()
+        //            let stringOfDays = try container.decode(String.self)
+        //            return stringOfDays.toDate()?.date ?? Date()
+        //        }
     }
     
     let higherPriority = DispatchQueue.global(qos: .userInitiated)
@@ -91,64 +91,64 @@ public class RequestCaller {
                         err.errorCode = responseHttp.statusCode
                         self.printJS(data: response)
                         switch responseHttp.statusCode {
-                            case 200...299:
-                                do {
-                                    let objs = try self.decoder.decode(ItemModel.self, from: response)
-                                    //                                    self.printJS(data: response)
-                                    //                                self.cache[keyUnique] = response
-                                    result = .success(objs)
-                                    semaphoreCall.signal()
-                                } catch let error as DecodingError {
-                                    print("DecodingError--->", error)
-                                    self.printJS(data: response)
-                                    err.errorDetail = error.localizedDescription
-                                    result = .failure(err)
-                                    semaphoreCall.signal()
-                                } catch {
-                                    print("normal error--->", error)
-                                    self.printJS(data: response)
-                                    err.errorDetail = error.localizedDescription
-                                    result = .failure(err)
-                                    semaphoreCall.signal()
-                                }
-                            case 400:
-                                result = self.resolveError(response, request)
+                        case 200...299:
+                            do {
+                                let objs = try self.decoder.decode(ItemModel.self, from: response)
+                                //                                    self.printJS(data: response)
+                                //                                self.cache[keyUnique] = response
+                                result = .success(objs)
                                 semaphoreCall.signal()
-                                
-                            case 401:
-                                print("response code 401-->")
+                            } catch let error as DecodingError {
+                                print("DecodingError--->", error)
                                 self.printJS(data: response)
-                                self.higherPriority.async {
-                                    if let onFailAuth = self.onFailRequestByAuth,
-                                       let newRequest = onFailAuth(request) {
-                                        result = self.makeAPICall(urlSession: newRequest)
-                                        semaphoreCall.signal()
-                                    } else {
-                                        err.errorDetail = "auth"
-                                        result = .failure(err)
-                                        semaphoreCall.signal()
-                                    }
+                                err.errorDetail = error.localizedDescription
+                                result = .failure(err)
+                                semaphoreCall.signal()
+                            } catch {
+                                print("normal error--->", error)
+                                self.printJS(data: response)
+                                err.errorDetail = error.localizedDescription
+                                result = .failure(err)
+                                semaphoreCall.signal()
+                            }
+                        case 400:
+                            result = self.resolveError(response, request)
+                            semaphoreCall.signal()
+                            
+                        case 401:
+                            print("response code 401-->")
+                            self.printJS(data: response)
+                            self.higherPriority.async {
+                                if let onFailAuth = self.onFailRequestByAuth,
+                                   let newRequest = onFailAuth(request) {
+                                    result = self.makeAPICall(urlSession: newRequest)
+                                    semaphoreCall.signal()
+                                } else {
+                                    err.errorDetail = "auth"
+                                    result = .failure(err)
+                                    semaphoreCall.signal()
                                 }
-                            case 403:
-                                err.errorDetail = "forbidden"
-                                result = .failure(err)
-                                semaphoreCall.signal()
-                                
-                            case 404...500:
-                                result = .failure(err)
-                                semaphoreCall.signal()
-                                
-                            case 501...599:
-                                
-                                err.errorDetail = "badRequest"
-                                result = .failure(err)
-                                semaphoreCall.signal()
-                                
-                            default:
-                                err.errorDetail = "requestFailed"
-                                result = .failure(err)
-                                semaphoreCall.signal()
-                                
+                            }
+                        case 403:
+                            err.errorDetail = "forbidden"
+                            result = .failure(err)
+                            semaphoreCall.signal()
+                            
+                        case 404...500:
+                            result = .failure(err)
+                            semaphoreCall.signal()
+                            
+                        case 501...599:
+                            
+                            err.errorDetail = "badRequest"
+                            result = .failure(err)
+                            semaphoreCall.signal()
+                            
+                        default:
+                            err.errorDetail = "requestFailed"
+                            result = .failure(err)
+                            semaphoreCall.signal()
+                            
                         }
                     } else if let error = error {
                         print("no data error--->")
@@ -195,13 +195,13 @@ public class RequestCaller {
                                 let objs = try self.decoder.decode(ItemModel.self, from: response)
                                 //                                self.printJS(data: response)
                                 result = .success(objs)
-                                 semaphoreCall.signal()
+                                semaphoreCall.signal()
                             } else {
                                 var error = try self.decoder.decode(RSErrorModel.self, from: response)
                                 error.errorCode = responseHttp.statusCode
                                 err.errorDetail = error.localizedDescription
                                 result = .failure(error)
-                                 semaphoreCall.signal()
+                                semaphoreCall.signal()
                             }
                         } catch let errordecod as DecodingError {
                             print("error decoding ", errordecod)
@@ -218,16 +218,16 @@ public class RequestCaller {
                                         if let onFailAuth = self.onFailRequestByAuth,
                                            let newRequest = onFailAuth(request) {
                                             result = self.makeAPICall(urlSession: newRequest)
-                                             semaphoreCall.signal()
+                                            semaphoreCall.signal()
                                         } else {
                                             err.errorDetail = "auth"
                                             result = .failure(err)
-                                             semaphoreCall.signal()
+                                            semaphoreCall.signal()
                                         }
                                     }
                                 } else {
                                     result = .failure(errordec)
-                                     semaphoreCall.signal()
+                                    semaphoreCall.signal()
                                 }
                             } catch {
                                 print("error decoding 2", error)
@@ -236,7 +236,7 @@ public class RequestCaller {
                                 decodingError.errorDetail = error.localizedDescription
                                 err.errorDetail = error.localizedDescription
                                 result = .failure(err)
-                                 semaphoreCall.signal()
+                                semaphoreCall.signal()
                             }
                         } catch {
                             
@@ -245,19 +245,19 @@ public class RequestCaller {
                             decodingError.errorDetail = error.localizedDescription
                             err.errorDetail = error.localizedDescription
                             result = .failure(err)
-                             semaphoreCall.signal()
+                            semaphoreCall.signal()
                         }
                     } else if let error = error {
                         print("no data error--->")
                         err.errorDetail = error.localizedDescription
                         result = .failure(err)
                         //                        result = .failure(ApiError.convert(error: error.localizedDescription))
-                         semaphoreCall.signal()
+                        semaphoreCall.signal()
                     } else {
                         err.errorDetail = "no data"
                         result = .failure(err)
                         //                        result = .failure(ApiError.convert(error: "no data"))
-                         semaphoreCall.signal()
+                        semaphoreCall.signal()
                     }
                     
                 }
@@ -333,17 +333,10 @@ public class RequestCaller {
         do {
             self.printJS(data: response, "\(#function))")
             let errorM = try self.decoder.decode(ErrorModel.self, from: response)
-            if let firsterror = errorM.errors?.first {
-                print("firsterror-->", firsterror)
-                //                result = .failure(ApiError.server(error: firsterror.message ))
-                err.errorDetail = firsterror.message
-                result = .failure(err)
-            } else {
-                print("errorM.message-->", errorM.message ?? "nothing")
-                //                result = .failure(ApiError.server(error: errorM.message ?? "error"))
-                err.errorDetail = errorM.message ?? "error"
-                result = .failure(err)
-            }
+            print("errorM.message-->", errorM.message ?? "nothing")
+            //                result = .failure(ApiError.server(error: errorM.message ?? "error"))
+            err.errorDetail = errorM.message ?? "error"
+            result = .failure(err)
         } catch {
             print("Decoding Error in error handle--->", error)
             if let json = self.printJS(data: response, "\(#function) \(String(describing: request.url))") {
@@ -418,18 +411,18 @@ enum ApiError: Error {
 extension ApiError: LocalizedError {
     public var localizedDescription: String {
         switch self {
-            case .failFuture:
-                return NSLocalizedString("Fail in request", comment: "Invalid Request (failFuture) RetroSwiftX")
-            case .convert(error: let error):
-                return NSLocalizedString("\(error.description)", comment: "Invalid Request (convert) RetroSwiftX")
-            case .noInternet:
-                return NSLocalizedString("No internet", comment: "Invalid Request (noInternet) RetroSwiftX")
-            case .decoding(error: let error):
-                return NSLocalizedString("\(error.description)", comment: "Invalid Request (decoding) RetroSwiftX")
-            case .server(error: let error):
-                return NSLocalizedString("\(error.description)", comment: "Invalid Request (server) RetroSwiftX")
-            case .invalidAuthToken:
-                return NSLocalizedString("Fail in auth api", comment: "Invalid Request (auth) RetroSwiftX")
+        case .failFuture:
+            return NSLocalizedString("Fail in request", comment: "Invalid Request (failFuture) RetroSwiftX")
+        case .convert(error: let error):
+            return NSLocalizedString("\(error.description)", comment: "Invalid Request (convert) RetroSwiftX")
+        case .noInternet:
+            return NSLocalizedString("No internet", comment: "Invalid Request (noInternet) RetroSwiftX")
+        case .decoding(error: let error):
+            return NSLocalizedString("\(error.description)", comment: "Invalid Request (decoding) RetroSwiftX")
+        case .server(error: let error):
+            return NSLocalizedString("\(error.description)", comment: "Invalid Request (server) RetroSwiftX")
+        case .invalidAuthToken:
+            return NSLocalizedString("Fail in auth api", comment: "Invalid Request (auth) RetroSwiftX")
         }
     }
 }

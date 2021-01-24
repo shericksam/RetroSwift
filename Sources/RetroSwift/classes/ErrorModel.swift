@@ -15,7 +15,7 @@ public struct ErrorModel: HasErrorInfo, Codable, Error {
     public var errorDetail: String?
     public var message: String?
     
-    init() {
+    public init() {
         
     }
 }
