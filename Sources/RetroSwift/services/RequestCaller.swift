@@ -10,62 +10,53 @@ import CoreData
 
 public typealias DecodableError = Decodable & HasErrorInfo & Error
 
-protocol RequestCallerTokenRefresh {
-    func onNewToken(token: String)
-}
-
 public class RequestCaller {
     
     private lazy var decoder = JSONDecoder()
     private var urlSession:URLSession
-    //    private let semaphore = DispatchSemaphore(value: 0)
     private let dispatchGroup = DispatchGroup()
-    //    private let dispatchAllTask = DispatchGroup()
-    private let dispatchQueue = DispatchQueue(label: "RetroSwift")
     private let cache = RetroCache<String, Data>()
-    //    var fetchTokenKey: String?
-    //    var refreshURLRequest: URLRequest?
-    //    var delegate: RequestCallerTokenRefresh?
     var managedObjectContext: NSManagedObjectContext?
     var onFailRequestByAuth: ((URLRequest)-> URLRequest?)?
+    private lazy var withLogs: Bool = false
     
-    public init(config:URLSessionConfiguration) {
+    public init(config:URLSessionConfiguration, _ dateFormatter: String? = nil, _ withLogs: Bool = false) {
         urlSession = URLSession(configuration: config)
         
-        //        if let codingUserInfoKeyManagedObjectContext = CodingUserInfoKey.managedObjectContext  {
-        //            let managedObjectContext = self.managedObjectContext
-        //            self.decoder.userInfo[codingUserInfoKeyManagedObjectContext] = managedObjectContext
-        //        }
-        //        self.decoder.dateDecodingStrategy = .custom { decoder in
-        //            let container = try decoder.singleValueContainer()
-        //            let stringOfDays = try container.decode(String.self)
-        //            return stringOfDays.toDate()?.date ?? Date()
-        //        }
-    }
-    
-    public convenience init() {
-        self.init(config: URLSessionConfiguration.default)
+        if let codingUserInfoKeyManagedObjectContext = CodingUserInfoKey.managedObjectContext  {
+            let managedObjectContext = self.managedObjectContext
+            self.decoder.userInfo[codingUserInfoKeyManagedObjectContext] = managedObjectContext
+        }
         
-        //        if let codingUserInfoKeyManagedObjectContext = CodingUserInfoKey.managedObjectContext  {
-        //            let managedObjectContext = self.managedObjectContext
-        //            self.decoder.userInfo[codingUserInfoKeyManagedObjectContext] = managedObjectContext
-        //        }
-        //
-        //        self.decoder.dateDecodingStrategy = .custom { decoder in
-        //            let container = try decoder.singleValueContainer()
-        //            let stringOfDays = try container.decode(String.self)
-        //            return stringOfDays.toDate()?.date ?? Date()
-        //        }
+        if let dateFormatter = dateFormatter {
+            self.decoder.dateDecodingStrategy = .custom { decoder in
+                let container = try decoder.singleValueContainer()
+                let stringOfDays = try container.decode(String.self)
+                var date: Date? = nil
+                date = DateFormatter.createFormatter(dateFormatter).date(from: stringOfDays)
+                return date ?? Date()
+            }
+        }
+        self.withLogs = withLogs
     }
     
-    let higherPriority = DispatchQueue.global(qos: .userInitiated)
-    let lowerPriority = DispatchQueue.global(qos: .utility)
+    public convenience init(_ dateFormatter: String? = nil, _ withLogs: Bool) {
+        self.init(config: URLSessionConfiguration.default, dateFormatter, withLogs)
+        
+        if let codingUserInfoKeyManagedObjectContext = CodingUserInfoKey.managedObjectContext  {
+            let managedObjectContext = self.managedObjectContext
+            self.decoder.userInfo[codingUserInfoKeyManagedObjectContext] = managedObjectContext
+        }
+    }
+    
     
     public func call<ItemModel:Decodable, RSErrorModel: DecodableError>(_ request: URLRequest)
     -> Swift.Result<ItemModel, RSErrorModel> {
+        let higherPriority = DispatchQueue.global(qos: .userInitiated)
+        let lowerPriority = DispatchQueue.global(qos: .utility)
         let semaphoreCall = DispatchSemaphore(value: 0)
-        print("<---INIT REQUEST--->",  semaphoreCall)
-        print("\(request.httpMethod ?? "--") TO URL:", request.url ?? "no url")
+        if self.withLogs { print("<---INIT REQUEST--->",  semaphoreCall) }
+        if self.withLogs { print("\(request.httpMethod ?? "--") TO URL:", request.url ?? "no url") }
         var err = RSErrorModel()
         err.errorCode = 0
         var result: Swift.Result<ItemModel, RSErrorModel> = .failure(err)
@@ -75,10 +66,10 @@ public class RequestCaller {
         //            do {
         //                let objs = try self.decoder.decode(ItemModel.self, from: cachedData)
         //                result = .success(objs)
-        ////                print("data by cache", objs)
+        ////                if self.withLogs { print("data by cache", objs) }
         //                 semaphoreCall.signal()
         //            } catch {
-        //                print("DecodingError from cahe--->", error.localizedDescription)
+        //                if self.withLogs { print("DecodingError from cahe--->", error.localizedDescription) }
         //            }
         //        }
         lowerPriority.async {
@@ -86,26 +77,25 @@ public class RequestCaller {
                 .dataTask(with: request) { (data, responseRequest, error) in
                     if let response = data,
                        let responseHttp = responseRequest as? HTTPURLResponse {
-                        print("Response \(request.httpMethod ?? "--") http status code:", responseHttp.statusCode)
-                        print("\(request.httpMethod ?? "--")  RESULT OF URL:", request.url ?? "no url")
+                        if self.withLogs { print("Response \(request.httpMethod ?? "--") http status code:", responseHttp.statusCode) }
+                        if self.withLogs { print("\(request.httpMethod ?? "--")  RESULT OF URL:", request.url ?? "no url") }
                         err.errorCode = responseHttp.statusCode
-                        self.printJS(data: response)
                         switch responseHttp.statusCode {
                         case 200...299:
                             do {
                                 let objs = try self.decoder.decode(ItemModel.self, from: response)
-                                //                                    self.printJS(data: response)
+                                //                                    self.if self.withLogs { self.printJS(data: response) }
                                 //                                self.cache[keyUnique] = response
                                 result = .success(objs)
                                 semaphoreCall.signal()
                             } catch let error as DecodingError {
-                                print("DecodingError--->", error)
+                                if self.withLogs { print("DecodingError--->", error) }
                                 self.printJS(data: response)
                                 err.errorDetail = error.localizedDescription
                                 result = .failure(err)
                                 semaphoreCall.signal()
                             } catch {
-                                print("normal error--->", error)
+                                if self.withLogs { print("normal error--->", error) }
                                 self.printJS(data: response)
                                 err.errorDetail = error.localizedDescription
                                 result = .failure(err)
@@ -116,9 +106,9 @@ public class RequestCaller {
                             semaphoreCall.signal()
                             
                         case 401:
-                            print("response code 401-->")
+                            if self.withLogs { print("response code 401-->") }
                             self.printJS(data: response)
-                            self.higherPriority.async {
+                            higherPriority.async {
                                 if let onFailAuth = self.onFailRequestByAuth,
                                    let newRequest = onFailAuth(request) {
                                     result = self.makeAPICall(urlSession: newRequest)
@@ -151,7 +141,7 @@ public class RequestCaller {
                             
                         }
                     } else if let error = error {
-                        print("no data error--->")
+                        if self.withLogs { print("no data error--->") }
                         err.errorDetail = error.localizedDescription
                         result = .failure(err)
                         semaphoreCall.signal()
@@ -165,7 +155,7 @@ public class RequestCaller {
             task.resume()
         }
         let resultSemaphore = semaphoreCall.wait(wallTimeout: .distantFuture)
-        print("resultSemaphore-->", resultSemaphore)
+        if self.withLogs { print("resultSemaphore-->", resultSemaphore) }
         //        if  semaphoreCall.wait(timeout: .now() + 30) == .timedOut {
         //            err.errorDetail = "timeout"
         //            result = .failure(err)
@@ -176,9 +166,11 @@ public class RequestCaller {
     
     public func simpleCall<ItemModel:Decodable, RSErrorModel: DecodableError>(_ request: URLRequest)
     -> Swift.Result<ItemModel, RSErrorModel> {
+        let higherPriority = DispatchQueue.global(qos: .userInitiated)
+        let lowerPriority = DispatchQueue.global(qos: .utility)
         let semaphoreCall = DispatchSemaphore(value: 0)
-        print("<---INIT REQUEST--->")
-        print("\(request.httpMethod ?? "--") TO URL:", request.url ?? "no url")
+        if self.withLogs { print("<---INIT REQUEST--->") }
+        if self.withLogs { print("\(request.httpMethod ?? "--") TO URL:", request.url ?? "no url") }
         var err = RSErrorModel()
         err.errorCode = 0
         var result: Swift.Result<ItemModel, RSErrorModel> = .failure(err)
@@ -187,13 +179,13 @@ public class RequestCaller {
                 .dataTask(with: request) { (data, responseRequest, error) in
                     if let response = data,
                        let responseHttp = responseRequest as? HTTPURLResponse {
-                        print("Response \(request.httpMethod ?? "--") http status code:", responseHttp.statusCode)
-                        print("\(request.httpMethod ?? "--")  RESULT OF URL:", request.url ?? "no url")
+                        if self.withLogs { print("Response \(request.httpMethod ?? "--") http status code:", responseHttp.statusCode) }
+                        if self.withLogs { print("\(request.httpMethod ?? "--")  RESULT OF URL:", request.url ?? "no url") }
                         err.errorCode = responseHttp.statusCode
                         do {
                             if (200...399).contains(responseHttp.statusCode) {
                                 let objs = try self.decoder.decode(ItemModel.self, from: response)
-                                //                                self.printJS(data: response)
+                                //                                self.if self.withLogs { self.printJS(data: response) }
                                 result = .success(objs)
                                 semaphoreCall.signal()
                             } else {
@@ -204,7 +196,7 @@ public class RequestCaller {
                                 semaphoreCall.signal()
                             }
                         } catch let errordecod as DecodingError {
-                            print("error decoding ", errordecod)
+                            if self.withLogs { print("error decoding ", errordecod) }
                             self.printJS(data: response)
                             do {
                                 var errordec = try self.decoder.decode(RSErrorModel.self, from: response)
@@ -212,9 +204,9 @@ public class RequestCaller {
                                 errordec.errorCode = responseHttp.statusCode
                                 errordec.errorDetail = errordec.localizedDescription
                                 if errordec.status == 2 {
-                                    print("response code 401-->")
+                                    if self.withLogs { print("response code 401-->") }
                                     self.printJS(data: response)
-                                    self.higherPriority.async {
+                                    higherPriority.async {
                                         if let onFailAuth = self.onFailRequestByAuth,
                                            let newRequest = onFailAuth(request) {
                                             result = self.makeAPICall(urlSession: newRequest)
@@ -230,7 +222,7 @@ public class RequestCaller {
                                     semaphoreCall.signal()
                                 }
                             } catch {
-                                print("error decoding 2", error)
+                                if self.withLogs { print("error decoding 2", error) }
                                 var decodingError = RSErrorModel()
                                 decodingError.errorCode = -1
                                 decodingError.errorDetail = error.localizedDescription
@@ -248,7 +240,7 @@ public class RequestCaller {
                             semaphoreCall.signal()
                         }
                     } else if let error = error {
-                        print("no data error--->")
+                        if self.withLogs { print("no data error--->") }
                         err.errorDetail = error.localizedDescription
                         result = .failure(err)
                         //                        result = .failure(ApiError.convert(error: error.localizedDescription))
@@ -278,19 +270,19 @@ public class RequestCaller {
             if let response = data,
                let responseHttp = responseRequest as? HTTPURLResponse {
                 
-                print("makeAPICall.statusCode", responseHttp.statusCode)
-                print("makeAPICall URL:", urlSession.url ?? "no url")
+                if self.withLogs { print("makeAPICall.statusCode", responseHttp.statusCode) }
+                if self.withLogs { print("makeAPICall URL:", urlSession.url ?? "no url") }
                 do {
                     let objs = try self.decoder.decode(ItemModel.self, from: response)
                     result = .success(objs)
                 } catch let error as DecodingError {
-                    print("DecodingError--->", error)
+                    if self.withLogs { print("DecodingError--->", error) }
                     self.printJS(data: response, "\(#function) \(String(describing: urlSession.url))")
                     //                    result = .failure(ApiError.decoding(error: error.localizedDescription))
                     err.errorDetail = error.localizedDescription
                     result = .failure(err)
                 } catch {
-                    print("normal error--->", error)
+                    if self.withLogs { print("normal error--->", error) }
                     self.printJS(data: response, "\(#function) \(String(describing: urlSession.url))")
                     //                    result = .failure(ApiError.convert(error: error.localizedDescription))
                     err.errorDetail = error.localizedDescription
@@ -315,13 +307,13 @@ public class RequestCaller {
             // make sure this JSON is in the format we expect
             if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
                 // try to read out a string array
-                print("<---- json \(tag)---->\n")
-                print(json)
-                print("<---- end - json \(tag)---->")
+                if self.withLogs { print("<---- json \(tag)---->\n") }
+                if self.withLogs { print(json) }
+                if self.withLogs { print("<---- end - json \(tag)---->") }
                 return json
             }
         } catch let error as NSError {
-            print("Failed to load: \(error.localizedDescription)")
+            if self.withLogs { print("Failed to load: \(error.localizedDescription)") }
         }
         return nil
     }
@@ -333,12 +325,12 @@ public class RequestCaller {
         do {
             self.printJS(data: response, "\(#function))")
             let errorM = try self.decoder.decode(ErrorModel.self, from: response)
-            print("errorM.message-->", errorM.message ?? "nothing")
+            if self.withLogs { print("errorM.message-->", errorM.message ?? "nothing") }
             //                result = .failure(ApiError.server(error: errorM.message ?? "error"))
             err.errorDetail = errorM.message ?? "error"
             result = .failure(err)
         } catch {
-            print("Decoding Error in error handle--->", error)
+            if self.withLogs { print("Decoding Error in error handle--->", error) }
             if let json = self.printJS(data: response, "\(#function) \(String(describing: request.url))") {
                 var errorStr = "error in json"
                 if let errorsInResponse = json["errors"] as? [String: String],
@@ -354,12 +346,12 @@ public class RequestCaller {
                     do {
                         try str.write(to: url, atomically: true, encoding: .utf8)
                         let input = try String(contentsOf: url)
-                        print(input)
+                        if self.withLogs { print(input) }
                     } catch {
-                        print(error.localizedDescription)
+                        if self.withLogs { print(error.localizedDescription) }
                     }
                 }
-                print("errorInRequest", errorStr)
+                if self.withLogs { print("errorInRequest", errorStr) }
                 //                result = .failure(ApiError.server(error: errorStr))
                 err.errorDetail = errorStr
                 result = .failure(err)
@@ -415,4 +407,12 @@ extension ApiError: LocalizedError {
             return NSLocalizedString("Fail in auth api", comment: "Invalid Request (auth) RetroSwiftX")
         }
     }
+}
+
+
+struct ValidAdonis: Codable {
+    var field: String
+    var message: String
+    var validation: String
+    
 }

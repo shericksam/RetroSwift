@@ -11,7 +11,10 @@ import Foundation
 public class Coroutines{
     
     public static func io( work : @escaping () throws -> Void )  {
-        DispatchQueue.global(qos: .utility).async {
+        let queue = OperationQueue()
+        queue.name = UUID().uuidString
+        queue.maxConcurrentOperationCount = 1
+        queue.addOperation {
             do {
                 try work()
             } catch {

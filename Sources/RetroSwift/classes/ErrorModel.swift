@@ -7,9 +7,8 @@
 //
 
 import Foundation
-//import RxRetroSwift
 
-public struct ErrorModel: HasErrorInfo, Codable, Error {
+public struct ErrorModel: HasErrorInfo, Codable {
     public var status: Int?
     public var errorCode: Int?
     public var errorDetail: String?

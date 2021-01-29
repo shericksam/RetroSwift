@@ -27,6 +27,7 @@ final class RetroCache<Key: Hashable, Value> {
         wrapped.removeObject(forKey: WrappedKey(key))
     }
 }
+
 private extension RetroCache {
     final class WrappedKey: NSObject {
         let key: Key

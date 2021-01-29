@@ -20,7 +20,7 @@ Install the dependencies and devDependencies and start the server.
 
 ```Swift
 dependencies: [
-    .package(url: "https://github.com/shericksam/RetroSwift.git", from: "1.1.4")
+    .package(url: "https://github.com/shericksam/RetroSwift.git", from: "1.2.0")
 ]
 ```
 ### Start with RetroSwift
@@ -170,7 +170,8 @@ class UsersRepository {
 }
 ```
 
-in your view model
+In your view-model you need to call the func [Coroutines.io](Sources/RetroSwift/coroutines/Corouitines.swift) to send this work into the background, **this is very important** to prevent freeze the main thread.
+When the request responses and you need to show info in the main thread use [Coroutines.main](Sources/RetroSwift/coroutines/Corouitines.swift) to show them
 ```Swift 
 import RetroSwift 
 
