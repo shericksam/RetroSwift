@@ -55,23 +55,11 @@ public class RequestCaller {
         let higherPriority = DispatchQueue.global(qos: .userInitiated)
         let lowerPriority = DispatchQueue.global(qos: .utility)
         let semaphoreCall = DispatchSemaphore(value: 0)
-        if self.withLogs { print("<---INIT REQUEST--->",  semaphoreCall) }
+        if self.withLogs { print("<---INIT REQUEST--->") }
         if self.withLogs { print("\(request.httpMethod ?? "--") TO URL:", request.url ?? "no url") }
         var err = RSErrorModel()
         err.errorCode = 0
         var result: Swift.Result<ItemModel, RSErrorModel> = .failure(err)
-        //        let keyUnique = "\(request.httpMethod ?? "--")TO\(request.url?.absoluteString ?? "no-url")"
-        //        if keyUnique != "--TOno-url",
-        //           let cachedData = cache[keyUnique] {
-        //            do {
-        //                let objs = try self.decoder.decode(ItemModel.self, from: cachedData)
-        //                result = .success(objs)
-        ////                if self.withLogs { print("data by cache", objs) }
-        //                 semaphoreCall.signal()
-        //            } catch {
-        //                if self.withLogs { print("DecodingError from cahe--->", error.localizedDescription) }
-        //            }
-        //        }
         lowerPriority.async {
             let task = self.urlSession
                 .dataTask(with: request) { (data, responseRequest, error) in
@@ -84,18 +72,16 @@ public class RequestCaller {
                         case 200...299:
                             do {
                                 let objs = try self.decoder.decode(ItemModel.self, from: response)
-                                //                                    self.if self.withLogs { self.printJS(data: response) }
-                                //                                self.cache[keyUnique] = response
                                 result = .success(objs)
                                 semaphoreCall.signal()
                             } catch let error as DecodingError {
-                                if self.withLogs { print("DecodingError--->", error) }
+                                print("DecodingError--->", error)
                                 self.printJS(data: response)
                                 err.errorDetail = error.localizedDescription
                                 result = .failure(err)
                                 semaphoreCall.signal()
                             } catch {
-                                if self.withLogs { print("normal error--->", error) }
+                                print("normal error--->", error)
                                 self.printJS(data: response)
                                 err.errorDetail = error.localizedDescription
                                 result = .failure(err)
@@ -155,12 +141,6 @@ public class RequestCaller {
             task.resume()
         }
         let resultSemaphore = semaphoreCall.wait(wallTimeout: .distantFuture)
-        if self.withLogs { print("resultSemaphore-->", resultSemaphore) }
-        //        if  semaphoreCall.wait(timeout: .now() + 30) == .timedOut {
-        //            err.errorDetail = "timeout"
-        //            result = .failure(err)
-        //        }
-        
         return result
     }
     
@@ -324,13 +304,12 @@ public class RequestCaller {
         var result: Swift.Result<ItemModel, RSErrorModel>!
         do {
             self.printJS(data: response, "\(#function))")
-            let errorM = try self.decoder.decode(ErrorModel.self, from: response)
-            if self.withLogs { print("errorM.message-->", errorM.message ?? "nothing") }
-            //                result = .failure(ApiError.server(error: errorM.message ?? "error"))
-            err.errorDetail = errorM.message ?? "error"
+            let errorM = try self.decoder.decode(RSErrorModel.self, from: response)
+            if self.withLogs { print("errorM.message-->", errorM.errorDetail ?? "nothing") }
+            err.errorDetail = "error"
             result = .failure(err)
         } catch {
-            if self.withLogs { print("Decoding Error in error handle--->", error) }
+            print("Decoding Error in error handle--->", error)
             if let json = self.printJS(data: response, "\(#function) \(String(describing: request.url))") {
                 var errorStr = "error in json"
                 if let errorsInResponse = json["errors"] as? [String: String],

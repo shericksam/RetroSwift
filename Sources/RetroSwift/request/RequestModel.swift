@@ -68,10 +68,8 @@ extension RequestModel {
     public func asURLRequest() -> URLRequest {
         
         let url = "\(baseUrl)/\(path)"
-//        print("url-->", url)
         
         var components = URLComponents(string: url)
-//        print("qItems", query ?? "nil")
         if let qItems = query {
             let queryItems:[URLQueryItem] = qItems.reduce([], { (result, current) -> [URLQueryItem] in
                 var _result = result
@@ -84,8 +82,6 @@ extension RequestModel {
         var request = URLRequest(url: (components?.url!)!)
         request.httpMethod = httpMethod.rawValue
         
-        
-//        print("payload", payload ?? "nil")
         if let payload = payload,
            let payloadData = try? JSONSerialization
             .data(withJSONObject: payload,
@@ -116,9 +112,6 @@ extension RequestModel {
                                  forHTTPHeaderField: $0.element.key)
             }
         
-//        let langStr = Locale.current.languageCode != "es" ? "en" : "es"
-//        print("langStr------------->", langStr)
-//        request.addValue(langStr, forHTTPHeaderField: "Accept-Language")
         return request
     }
 }
