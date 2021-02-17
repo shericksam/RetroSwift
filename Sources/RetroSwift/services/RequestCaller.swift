@@ -12,19 +12,19 @@ public typealias DecodableError = Decodable & HasErrorInfo & Error
 
 public class RequestCaller {
     
-    private lazy var decoder = JSONDecoder()
+    public var decoder = JSONDecoder()
     private var urlSession:URLSession
     private let dispatchGroup = DispatchGroup()
     private let cache = RetroCache<String, Data>()
-    var managedObjectContext: NSManagedObjectContext?
-    var onFailRequestByAuth: ((URLRequest)-> URLRequest?)?
-    private lazy var withLogs: Bool = false
+    private var managedObjectContext: NSManagedObjectContext?
+    public var onFailRequestByAuth: ((URLRequest)-> URLRequest?)?
+    public lazy var withLogs: Bool = false
     
-    public init(config:URLSessionConfiguration, _ dateFormatter: String? = nil, _ withLogs: Bool = false) {
+    public init(config:URLSessionConfiguration, _ dateFormatter: String? = nil, _ withLogs: Bool = false, _ managedObjectContext: NSManagedObjectContext? = nil) {
         urlSession = URLSession(configuration: config)
         
         if let codingUserInfoKeyManagedObjectContext = CodingUserInfoKey.managedObjectContext  {
-            let managedObjectContext = self.managedObjectContext
+            self.managedObjectContext = managedObjectContext
             self.decoder.userInfo[codingUserInfoKeyManagedObjectContext] = managedObjectContext
         }
         
@@ -40,13 +40,8 @@ public class RequestCaller {
         self.withLogs = withLogs
     }
     
-    public convenience init(_ dateFormatter: String? = nil, _ withLogs: Bool) {
-        self.init(config: URLSessionConfiguration.default, dateFormatter, withLogs)
-        
-        if let codingUserInfoKeyManagedObjectContext = CodingUserInfoKey.managedObjectContext  {
-            let managedObjectContext = self.managedObjectContext
-            self.decoder.userInfo[codingUserInfoKeyManagedObjectContext] = managedObjectContext
-        }
+    public convenience init(_ dateFormatter: String? = nil, _ withLogs: Bool, _ managedObjectContext: NSManagedObjectContext? = nil) {
+        self.init(config: URLSessionConfiguration.default, dateFormatter, withLogs, managedObjectContext)
     }
     
     
