@@ -281,7 +281,7 @@ public class RequestCaller {
         return result
     }
     
-    public func upload<ItemModel:Decodable, RSErrorModel: DecodableError>(_ request: URLRequest)
+    public func upload<ItemModel:Decodable, RSErrorModel: DecodableError>(_ request: URLRequest, _ dataRequest: Data?)
     -> Swift.Result<ItemModel, RSErrorModel> {
         let higherPriority = DispatchQueue.global(qos: .userInitiated)
         let lowerPriority = DispatchQueue.global(qos: .utility)
@@ -293,7 +293,7 @@ public class RequestCaller {
         var result: Swift.Result<ItemModel, RSErrorModel> = .failure(err)
         lowerPriority.async {
             let task = self.urlSession
-                .uploadTask(with: request, from: request.httpBody) { (data, responseRequest, error) in
+                .uploadTask(with: request, from: dataRequest) { (data, responseRequest, error) in
                     if let response = data,
                        let responseHttp = responseRequest as? HTTPURLResponse {
                         if self.withLogs { print("Response \(request.httpMethod ?? "--") http status code:", responseHttp.statusCode) }
