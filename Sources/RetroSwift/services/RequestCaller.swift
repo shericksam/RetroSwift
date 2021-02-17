@@ -306,8 +306,9 @@ public class RequestCaller {
             self.printJS(data: response, "\(#function))")
             let errorM = try self.decoder.decode(RSErrorModel.self, from: response)
             if self.withLogs { print("errorM.message-->", errorM.errorDetail ?? "nothing") }
-            err.errorDetail = "error"
-            result = .failure(err)
+            errorM.errorDetail = "error with model"
+            errorM.errorCode = 400
+            result = .failure(errorM)
         } catch {
             print("Decoding Error in error handle--->", error)
             if let json = self.printJS(data: response, "\(#function) \(String(describing: request.url))") {
