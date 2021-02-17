@@ -304,7 +304,7 @@ public class RequestCaller {
         var result: Swift.Result<ItemModel, RSErrorModel>!
         do {
             self.printJS(data: response, "\(#function))")
-            let errorM = try self.decoder.decode(RSErrorModel.self, from: response)
+            var errorM = try self.decoder.decode(RSErrorModel.self, from: response)
             if self.withLogs { print("errorM.message-->", errorM.errorDetail ?? "nothing") }
             errorM.errorDetail = "error with model"
             errorM.errorCode = 400

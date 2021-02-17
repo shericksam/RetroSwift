@@ -20,7 +20,7 @@ Install the dependencies and devDependencies and start the server.
 
 ```Swift
 dependencies: [
-    .package(url: "https://github.com/shericksam/RetroSwift.git", from: "1.2.2")
+    .package(url: "https://github.com/shericksam/RetroSwift.git", from: "1.2.3")
 ]
 ```
 ### Start with RetroSwift
