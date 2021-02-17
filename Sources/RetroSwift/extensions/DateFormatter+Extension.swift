@@ -28,7 +28,7 @@ public extension DateFormatter {
     }()
     
     static func createFormatter(_ str: String) -> DateFormatter {
-        var dateFormatter = DateFormatter()
+        let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = str
         return dateFormatter
     }

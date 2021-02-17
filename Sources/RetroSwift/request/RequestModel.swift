@@ -19,6 +19,7 @@ public enum ContentType {
     case MultiPart
     case ApplicationJson
     case Form
+    case raw
 }
 
 public struct RequestModel {
@@ -89,9 +90,6 @@ extension RequestModel {
             .data(withJSONObject: payload,
                   options: self.options) {
             request.httpBody = payloadData
-            if !self.options.isEmpty {
-                request.setValue("\(payloadData.count)", forHTTPHeaderField: "Content-Length")
-            }
         }
         
         switch self.contentType {
@@ -101,6 +99,9 @@ extension RequestModel {
                 request.addValue("application/json", forHTTPHeaderField: "Content-Type")
             case .Form:
                 request.addValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+            case .raw:
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.httpBody = payload?.percentEncoded()
         }
         
         headers?
