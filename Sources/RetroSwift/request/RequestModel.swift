@@ -42,7 +42,7 @@ public struct RequestModel {
     var payload: [String:Any?]?
     var headers:[String:String]?
     var contentType: ContentType = .ApplicationJson
-    
+    var options: JSONSerialization.WritingOptions = []
     
     public init(
         httpMethod:HttpMethod,
@@ -51,7 +51,8 @@ public struct RequestModel {
         query:[String:Any]? = nil,
         payload:[String:Any?]? = nil,
         headers:[String:String]? = nil,
-        contentType: ContentType = .ApplicationJson) {
+        contentType: ContentType = .ApplicationJson,
+        options: JSONSerialization.WritingOptions = []) {
         
         self.baseUrl = baseUrl
         self.httpMethod = httpMethod
@@ -60,6 +61,7 @@ public struct RequestModel {
         self.payload = payload
         self.headers = headers
         self.contentType = contentType
+        self.options = options
     }
 }
 
@@ -85,8 +87,11 @@ extension RequestModel {
         if let payload = payload,
            let payloadData = try? JSONSerialization
             .data(withJSONObject: payload,
-                  options: []) {
+                  options: self.options) {
             request.httpBody = payloadData
+            if !self.options.isEmpty {
+                request.setValue("\(payloadData.count)", forHTTPHeaderField: "Content-Length")
+            }
         }
         
         switch self.contentType {
