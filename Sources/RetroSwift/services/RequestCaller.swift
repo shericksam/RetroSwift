@@ -17,10 +17,11 @@ public class RequestCaller {
     private let dispatchGroup = DispatchGroup()
     private let cache = RetroCache<String, Data>()
     private var managedObjectContext: NSManagedObjectContext?
+    private var dateFormatter: String?
     public var onFailRequestByAuth: ((URLRequest)-> URLRequest?)?
     public lazy var withLogs: Bool = false
     
-    public init(config:URLSessionConfiguration, _ dateFormatter: String? = nil, _ withLogs: Bool = false, _ managedObjectContext: NSManagedObjectContext? = nil) {
+    public init(config:URLSessionConfiguration, _ withLogs: Bool = false, _ dateFormatter: String? = nil, _ managedObjectContext: NSManagedObjectContext? = nil) {
         urlSession = URLSession(configuration: config)
         
         if let codingUserInfoKeyManagedObjectContext = CodingUserInfoKey.managedObjectContext  {
@@ -38,23 +39,40 @@ public class RequestCaller {
             }
         }
         self.withLogs = withLogs
+        self.dateFormatter = dateFormatter
     }
     
-    public convenience init(_ dateFormatter: String? = nil, _ withLogs: Bool, _ managedObjectContext: NSManagedObjectContext? = nil) {
-        self.init(config: URLSessionConfiguration.default, dateFormatter, withLogs, managedObjectContext)
+    public convenience init(_ withLogs: Bool, _ dateFormatter: String? = nil, _ managedObjectContext: NSManagedObjectContext? = nil) {
+        self.init(config: URLSessionConfiguration.default, withLogs, dateFormatter, managedObjectContext)
     }
     
     
-    public func call<ItemModel:Decodable, RSErrorModel: DecodableError>(_ request: URLRequest)
-    -> Swift.Result<ItemModel, RSErrorModel> {
+    public func call<ItemModel:Decodable, RSErrorModel: DecodableError>(
+                _ request: URLRequest,
+                _ moc: NSManagedObjectContext? = nil,
+                _ decoderF: JSONDecoder? = nil
+            ) -> Swift.Result<ItemModel, RSErrorModel> {
+        let decoder = decoderF ?? configDecoder(moc)
         let higherPriority = DispatchQueue.global(qos: .userInitiated)
         let lowerPriority = DispatchQueue.global(qos: .utility)
         let semaphoreCall = DispatchSemaphore(value: 0)
-        if self.withLogs { print("<---INIT REQUEST--->") }
+        if self.withLogs { print("<---INIT REQUEST--->",  semaphoreCall) }
         if self.withLogs { print("\(request.httpMethod ?? "--") TO URL:", request.url ?? "no url") }
         var err = RSErrorModel()
         err.errorCode = 0
         var result: Swift.Result<ItemModel, RSErrorModel> = .failure(err)
+        //        let keyUnique = "\(request.httpMethod ?? "--")TO\(request.url?.absoluteString ?? "no-url")"
+        //        if keyUnique != "--TOno-url",
+        //           let cachedData = cache[keyUnique] {
+        //            do {
+        //                let objs = try self.decoder.decode(ItemModel.self, from: cachedData)
+        //                result = .success(objs)
+        ////                if self.withLogs { print("data by cache", objs) }
+        //                 semaphoreCall.signal()
+        //            } catch {
+        //                if self.withLogs { print("DecodingError from cahe--->", error.localizedDescription) }
+        //            }
+        //        }
         lowerPriority.async {
             let task = self.urlSession
                 .dataTask(with: request) { (data, responseRequest, error) in
@@ -64,65 +82,84 @@ public class RequestCaller {
                         if self.withLogs { print("\(request.httpMethod ?? "--")  RESULT OF URL:", request.url ?? "no url") }
                         err.errorCode = responseHttp.statusCode
                         switch responseHttp.statusCode {
-                        case 200...299:
-                            do {
-                                let objs = try self.decoder.decode(ItemModel.self, from: response)
-                                result = .success(objs)
-                                semaphoreCall.signal()
-                            } catch let error as DecodingError {
-                                print("DecodingError--->", error)
-                                self.printJS(data: response)
-                                err.errorDetail = error.localizedDescription
-                                result = .failure(err)
-                                semaphoreCall.signal()
-                            } catch {
-                                print("normal error--->", error)
-                                self.printJS(data: response)
-                                err.errorDetail = error.localizedDescription
-                                result = .failure(err)
-                                semaphoreCall.signal()
-                            }
-                        case 400:
-                            result = self.resolveError(response, request)
-                            semaphoreCall.signal()
-                            
-                        case 401:
-                            if self.withLogs { print("response code 401-->") }
-                            self.printJS(data: response)
-                            higherPriority.async {
-                                if let onFailAuth = self.onFailRequestByAuth,
-                                   let newRequest = onFailAuth(request) {
-                                    result = self.makeAPICall(urlSession: newRequest)
+                            case 200...299:
+                                do {
+                                    let objs = try decoder.decode(ItemModel.self, from: response)
+                                  if self.withLogs { self.printJS(data: response) }
+                                    //                                self.cache[keyUnique] = response
+                                    result = .success(objs)
                                     semaphoreCall.signal()
-                                } else {
-                                    err.errorDetail = "auth"
+                                } catch let error as DecodingError {
+                                    print("DecodingError in 200--->", error)
+                                    
+                                    result = .failure(err)
+                                    result = self.resolveError(response, request)
+                                    print("result in error catch--->", result)
+                                    self.printJS(data: response)
+                                    semaphoreCall.signal()
+                                } catch {
+                                    print("normal error--->", error)
+                                    self.printJS(data: response)
+                                    err.errorDetail = error.localizedDescription
                                     result = .failure(err)
                                     semaphoreCall.signal()
                                 }
-                            }
-                        case 403:
-                            err.errorDetail = "forbidden"
-                            result = .failure(err)
-                            semaphoreCall.signal()
-                            
-                        case 404...500:
-                            result = .failure(err)
-                            semaphoreCall.signal()
-                            
-                        case 501...599:
-                            
-                            err.errorDetail = "badRequest"
-                            result = .failure(err)
-                            semaphoreCall.signal()
-                            
-                        default:
-                            err.errorDetail = "requestFailed"
-                            result = .failure(err)
-                            semaphoreCall.signal()
-                            
+                            case 400:
+                                result = self.resolveError(response, request)
+                                semaphoreCall.signal()
+                                
+                            case 401:
+                                 print("response code 401-->")
+                                self.printJS(data: response)
+                                higherPriority.async {
+                                    if let onFailAuth = self.onFailRequestByAuth,
+                                       let newRequest = onFailAuth(request) {
+                                        result = self.makeAPICall(urlSession: newRequest)
+                                        semaphoreCall.signal()
+                                    } else {
+                                        err.errorDetail = "auth"
+//                                        result = .failure(err)
+                                        result = self.resolveError(response, request)
+                                        semaphoreCall.signal()
+                                    }
+                                }
+                            case 403:
+                                if self.withLogs { self.printJS(data: response) }
+//                                err.errorDetail = "forbidden"
+                                higherPriority.async {
+                                    if let onFailAuth = self.onFailRequestByAuth,
+                                       let newRequest = onFailAuth(request) {
+                                        result = self.makeAPICall(urlSession: newRequest)
+                                        semaphoreCall.signal()
+                                    } else {
+                                        err.errorDetail = "auth"
+//                                        result = .failure(err)
+                                        result = self.resolveError(response, request)
+                                        semaphoreCall.signal()
+                                    }
+                                }
+                                
+                            case 404...500:
+                                if self.withLogs { self.printJS(data: response) }
+//                                result = .failure(err)
+                                result = self.resolveError(response, request)
+                                semaphoreCall.signal()
+                                
+                            case 501...599:
+                                if self.withLogs { self.printJS(data: response) }
+                                err.errorDetail = "badRequest"
+//                                result = .failure(err)
+                                result = self.resolveError(response, request)
+                                semaphoreCall.signal()
+                                
+                            default:
+                                err.errorDetail = "requestFailed"
+                                result = .failure(err)
+                                semaphoreCall.signal()
+                                
                         }
                     } else if let error = error {
-                        if self.withLogs { print("no data error--->") }
+                        print("no data error--->")
                         err.errorDetail = error.localizedDescription
                         result = .failure(err)
                         semaphoreCall.signal()
@@ -135,7 +172,13 @@ public class RequestCaller {
                 }
             task.resume()
         }
-        _ = semaphoreCall.wait(wallTimeout: .distantFuture)
+//        let resultSemaphore = semaphoreCall.wait(wallTimeout: .distantFuture)
+//        if self.withLogs { print("resultSemaphore-->", resultSemaphore) }
+        if  semaphoreCall.wait(timeout: .now() + 30) == .timedOut {
+            err.errorDetail = "timeout"
+            result = .failure(err)
+        }
+        
         return result
     }
     
@@ -276,6 +319,37 @@ public class RequestCaller {
         return result
     }
     
+    func configDecoder(_ moc: NSManagedObjectContext? = nil) -> JSONDecoder {
+        let decoder = JSONDecoder()
+        if let moc = moc {
+            if let codingUserInfoKeyManagedObjectContext = CodingUserInfoKey.managedObjectContext  {
+                let managedObjectContext = moc
+                decoder.userInfo[codingUserInfoKeyManagedObjectContext] = managedObjectContext
+            }
+        } else {
+            if let codingUserInfoKeyManagedObjectContext = CodingUserInfoKey.managedObjectContext  {
+                let managedObjectContext = self.managedObjectContext
+                decoder.userInfo[codingUserInfoKeyManagedObjectContext] = managedObjectContext
+            }
+        }
+        
+        if let dateFormatter = dateFormatter {
+            decoder.dateDecodingStrategy = .custom { decoder in
+                let container = try decoder.singleValueContainer()
+                let stringOfDays = try container.decode(String.self)
+                var date: Date? = nil
+                date = DateFormatter.createFormatter(dateFormatter).date(from: stringOfDays)
+                return date ?? Date()
+            }
+        }
+//        decoder.dateDecodingStrategy = .custom { decoder in
+//            let container = try decoder.singleValueContainer()
+//            let stringOfDays = try container.decode(String.self)
+//            return stringOfDays.toDate()?.date ?? Date()
+//        }
+        return decoder
+    }
+    
     public func upload<ItemModel:Decodable, RSErrorModel: DecodableError>(_ request: URLRequest, _ dataRequest: Data?)
     -> Swift.Result<ItemModel, RSErrorModel> {
         let higherPriority = DispatchQueue.global(qos: .userInitiated)
@@ -393,10 +467,18 @@ public class RequestCaller {
         do {
             self.printJS(data: response, "\(#function))")
             var errorM = try self.decoder.decode(RSErrorModel.self, from: response)
-            if self.withLogs { print("errorM.message-->", errorM.errorDetail ?? "nothing") }
-            errorM.errorDetail = "error with model"
-            errorM.errorCode = 400
-            result = .failure(errorM)
+            errorM.errorCode = 0
+//            if let firsterror = errorM.errors?.first {
+//                print("firsterror-->", firsterror)
+//                //                result = .failure(ApiError.server(error: firsterror.message ))
+//                err.errorDetail = firsterror.message
+//                result = .failure(err)
+//            } else {
+//                print("errorM.message-->", errorM.message ?? "nothing")
+//                //                result = .failure(ApiError.server(error: errorM.message ?? "error"))
+//                err.errorDetail = errorM.message ?? "error"
+                result = .failure(errorM)
+//            }
         } catch {
             print("Decoding Error in error handle--->", error)
             if let json = self.printJS(data: response, "\(#function) \(String(describing: request.url))") {
@@ -419,7 +501,7 @@ public class RequestCaller {
                         if self.withLogs { print(error.localizedDescription) }
                     }
                 }
-                if self.withLogs { print("errorInRequest", errorStr) }
+                print("errorInRequest", errorStr)
                 //                result = .failure(ApiError.server(error: errorStr))
                 err.errorDetail = errorStr
                 result = .failure(err)
